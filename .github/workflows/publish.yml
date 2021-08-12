@@ -38,6 +38,7 @@ jobs:
   publish:
     name: publish Python 🐍 distributions 📦 to PyPI and TestPyPI
     runs-on: ubuntu-latest
+    needs: [build]
 
     steps:
       - uses: actions/download-artifact@master
@@ -60,6 +61,8 @@ jobs:
   release:
     name: create a release
     runs-on: ubuntu-latest
+    needs: [build]
+    
     steps:
       - uses: actions/download-artifact@master
         with:
