@@ -1,4 +1,4 @@
-name: Publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+name: 🏗️Build and 📦publish ☀️release
 
 on: push
 
@@ -96,7 +96,7 @@ jobs:
       - name: create release
         uses: softprops/action-gh-release@v1
         with:
-          files: /build/viur-vi.zip
+          files: dist/*
           body: ${{ steps.changelog_reader.outputs.changes }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
