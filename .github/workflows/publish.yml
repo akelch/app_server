@@ -33,7 +33,7 @@ jobs:
       - uses: actions/upload-artifact@master
         with:
           name: buildfiles
-          path: dist
+          path: .
 
   publish:
     name: 📦 publish to PyPI and TestPyPI
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/download-artifact@master
         with:
           name: buildfiles
-          path: dist
+          path: .
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@master
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/download-artifact@master
         with:
           name: buildfiles
-          path: dist
+          path: .
 
       - name: Get version from tag
         id: tag_name
