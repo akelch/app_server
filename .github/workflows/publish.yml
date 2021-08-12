@@ -4,7 +4,7 @@ on: push
 
 jobs:
   build:
-    name: Build package
+    name: 🏗️ build package
     runs-on: ubuntu-latest
 
     steps:
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/upload-artifact@master
         with:
           name: buildfiles
-          path: /dist
+          path: dist
 
   publish:
     name: publish Python 🐍 distributions 📦 to PyPI and TestPyPI
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/download-artifact@master
         with:
           name: buildfiles
-          path: /dist
+          path: dist
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@master
@@ -62,12 +62,12 @@ jobs:
     name: create a release
     runs-on: ubuntu-latest
     needs: [build]
-    
+
     steps:
       - uses: actions/download-artifact@master
         with:
           name: buildfiles
-          path: /dist
+          path: dist
 
       - name: Get version from tag
         id: tag_name
