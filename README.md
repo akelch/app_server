@@ -16,7 +16,7 @@ The app server dependents on the following packages
 ### Installation
 use pip or pipenv to install this package
  ```sh
-    pip install app_server
+    pip install app-server
    ```
 
 ## License
