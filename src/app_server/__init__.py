@@ -42,7 +42,7 @@ class WrappingApp(object):
 
 	def wsgi_app(self, environ, start_response):
 		request = Request(environ)
-		response = Response(f'Path not found or invalid: {request.path}')
+		response = Response(f'Path not found or invalid: {request.path}', status=501)
 		return response(environ, start_response)
 
 	def __call__(self, environ, start_response):
@@ -51,7 +51,8 @@ class WrappingApp(object):
 class myProxy(ProxyMiddleware):
 	"""this addition allows to redirect all routes to given targets"""
 
-	def __init__(self, app, targets,chunk_size=2,timeout=10):
+	def __init__(self, app, targets,chunk_size=2 << 13,timeout=10):
+
 		super().__init__(app,targets,chunk_size,timeout)
 
 		def _set_defaults(opts):
@@ -113,7 +114,7 @@ def create_app(host, port, app_port, protocol="http", with_static=True):
 def start_server(host, port, app_port):
 	'''create app and start server'''
 	app = create_app(host,port, app_port)
-	run_simple(host, port, app, use_debugger=True, use_reloader=True)
+	run_simple(host, port, app, use_debugger=True, use_reloader=True, threaded=True)
 
 def envVars(application_id):
 	'''set nessesary environment variables'''
