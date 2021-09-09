@@ -1,4 +1,4 @@
-import os, re, subprocess, yaml, argparse
+import os, re, subprocess, yaml, argparse, time
 from werkzeug.wrappers import Request, Response
 from werkzeug.middleware.shared_data import SharedDataMiddleware
 from werkzeug.middleware.http_proxy import ProxyMiddleware
@@ -114,6 +114,7 @@ def create_app(host, port, app_port, protocol="http", with_static=True):
 def start_server(host, port, app_port):
 	'''create app and start server'''
 	app = create_app(host,port, app_port)
+	time.sleep(5)
 	run_simple(host, port, app, use_debugger=True, use_reloader=True, threaded=True)
 
 def envVars(application_id):
@@ -153,7 +154,7 @@ def main():
 
 	try:
 		os.chdir(applicationFolder)
-		gunicornCMD = f"gunicorn -b :{args.app_port} -w {args.worker} --threads {args.threads} --disable-redirect-access-to-syslog main:app"
+		gunicornCMD = f"gunicorn -b :{args.app_port} -w {args.worker} --threads {args.threads} --reload --disable-redirect-access-to-syslog main:app"
 		p = subprocess.Popen(gunicornCMD.split())
 		os.chdir(currentFolder)
 		start_server(args.host,args.port, args.app_port)
