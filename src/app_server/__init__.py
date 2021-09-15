@@ -47,7 +47,7 @@ class WrappingApp(object):
 
 	def wsgi_app(self, environ, start_response):
 		request = Request(environ)
-		response = Response(f'Path not found or invalid: {request.path}', status=501)
+		response = Response(f'Path not found or invalid: {request.path}', status=404)
 		return response(environ, start_response)
 
 	def __call__(self, environ, start_response):
@@ -107,7 +107,7 @@ class mySharedData(SharedDataMiddleware):
 		for search_path, loader in self.exports:
 			#lets check for regex, and inject real_path
 			if re.match(search_path, path):
-				real_path = re.sub(search_path,r'{0}'.format(self.org_exports[search_path]),path)
+				real_path = re.sub(search_path, self.org_exports[search_path], path, 1)
 				real_filename, file_loader = self.get_file_loader(real_path)(None)
 
 				if file_loader is not None:
