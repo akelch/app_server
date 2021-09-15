@@ -11,36 +11,6 @@ from werkzeug.http import http_date, is_resource_modified
 
 __version__ = "0.6.1"
 
-applicationFolder = ""
-
-def loadYamlFile(path):
-	'''load yaml file from given path'''
-	try:
-		cronYaml = open(path, "r")
-		cronYamlObj = yaml.load(cronYaml, Loader=yaml.Loader)
-		return cronYamlObj
-	except Exception as e:
-		print(e)
-		return None
-
-def buildStaticRoutes():
-	'''build static routes from yaml handlers'''
-	path = os.path.join(applicationFolder,"app.yaml")
-	appdata = loadYamlFile(path)
-
-	if not appdata:
-		return None
-
-	static_routes = {}
-	for route in appdata["handlers"]:
-		if "static_dir" in route:
-			static_routes.update({route["url"]: {"path":route["static_dir"],"type":"dir"}})
-
-		if "static_files" in route:
-			static_routes.update({route["url"]: {"path":route["static_files"],"type":"file"}})
-
-	return static_routes
-
 class WrappingApp(object):
 	'''simple wrapping app'''
 	def __init__(self, config):
@@ -83,7 +53,6 @@ class myDispatcher(DispatcherMiddleware):
 				break
 
 		return app(environ, start_response)
-
 
 class mySharedData(SharedDataMiddleware):
 	'''use regex to find a matching files'''
@@ -165,40 +134,41 @@ class mySharedData(SharedDataMiddleware):
 		start_response("200 OK", headers)
 		return wrap_file(environ, f)
 
-def create_app(host, port, app_port, protocol="http", with_static=True):
+def start_server(host, port, app_dir, app_port, protocol="http"):
 	'''use the disapatcherMiddleware to connect SharedDataMiddleware and ProxyMiddleware with the wrapping app.'''
 	app = WrappingApp({})
 	apps = {}
 
-	if with_static:
-		staticRoutes = buildStaticRoutes()
+	# load & parse the app.yaml
+	try:
+		with open(os.path.join(app_dir, "app.yaml"), "r") as f:
+			appdata = yaml.load(f, Loader=yaml.Loader)
+	except Exception as e:
+		print(e)
+		return None
 
-		for route,config in staticRoutes.items():
-			static_app = mySharedData(app.wsgi_app,
-			{
-				route:  os.path.join(applicationFolder, config["path"])
-			})
-			if config["type"] =="dir":
-				apps.update({route+"/.*":static_app})
-			else:
-				apps.update({route: static_app})
+	# make shared middlewares for static files
+	for route in appdata["handlers"]:
+		if path := route.get("static_dir"):
+			pattern = route["url"] + "/.*"
 
-	script_app = myProxy(app.wsgi_app, {
+		elif path := route.get("static_files"):
+			pattern = route["url"]
+
+		else:
+			continue  # skip
+
+		#print(pattern, route["url"], path)
+		apps[pattern] = mySharedData(app.wsgi_app, {route["url"]: os.path.join(app_dir, path)})
+
+	apps.update({"/": myProxy(app.wsgi_app, {
 		"/": {
 			"target": f"{protocol}://{host}:{app_port}/",
 			"host": f"{host}:{port}"
 		}
-	})
+	})})
+	app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
-	apps.update({"/": script_app})
-	app.wsgi_app = myDispatcher(app.wsgi_app,apps)
-
-	return app
-
-
-def start_server(host, port, app_port):
-	'''create app and start server'''
-	app = create_app(host,port, app_port)
 	time.sleep(5)
 	run_simple(host, port, app, use_debugger=True, use_reloader=True, threaded=True)
 
@@ -217,7 +187,6 @@ def main():
 	start gunicorn
 	start wrapping app
 	'''
-	global applicationFolder
 	ap = argparse.ArgumentParser(
 		description="alternative dev_appserver"
 	)
@@ -245,7 +214,7 @@ def main():
 		gunicornCMD = f"gunicorn -b :{args.app_port} -w {args.worker} --threads {args.threads} --reload --disable-redirect-access-to-syslog main:app"
 		p = subprocess.Popen(gunicornCMD.split())
 		os.chdir(currentFolder)
-		start_server(args.host,args.port, args.app_port)
+		start_server(args.host, args.port, applicationFolder, args.app_port)
 	except Exception as e:
 		print(e)
 
