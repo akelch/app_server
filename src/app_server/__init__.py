@@ -1,9 +1,14 @@
-import os, re, subprocess, yaml, argparse, time
+import os, re, subprocess, yaml, argparse, time, mimetypes
 from werkzeug.wrappers import Request, Response
 from werkzeug.middleware.shared_data import SharedDataMiddleware
 from werkzeug.middleware.http_proxy import ProxyMiddleware
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.serving import run_simple
+
+from werkzeug.wsgi import get_path_info, wrap_file
+from werkzeug.utils import get_content_type
+from werkzeug.http import http_date, is_resource_modified
+
 
 applicationFolder = ""
 
@@ -79,6 +84,85 @@ class myDispatcher(DispatcherMiddleware):
 		return app(environ, start_response)
 
 
+class mySharedData(SharedDataMiddleware):
+	'''use regex to find a matching files'''
+
+	def __init__(
+			self,
+			app,
+			exports,
+			disallow: None = None,
+			cache: bool = True,
+			cache_timeout: int = 60 * 60 * 12,
+			fallback_mimetype: str = "application/octet-stream",
+	) -> None:
+		self.org_exports = exports.copy()
+		super().__init__(app, exports, disallow, cache, cache_timeout, fallback_mimetype)
+
+
+	def __call__(self, environ, start_response):
+		path = get_path_info(environ)
+		file_loader = None
+
+		for search_path, loader in self.exports:
+			#lets check for regex, and inject real_path
+			if re.match(search_path, path):
+				real_path = re.sub(search_path,r'{0}'.format(self.org_exports[search_path]),path)
+				real_filename, file_loader = self.get_file_loader(real_path)(None)
+
+				if file_loader is not None:
+					break
+
+			if search_path == path:
+				real_filename, file_loader = loader(None)
+
+				if file_loader is not None:
+					break
+
+			if not search_path.endswith("/"):
+				search_path += "/"
+
+			if path.startswith(search_path):
+				real_filename, file_loader = loader(path[len(search_path):])
+
+				if file_loader is not None:
+					break
+
+		if file_loader is None or not self.is_allowed(real_filename):  # type: ignore
+			return self.app(environ, start_response)
+
+		guessed_type = mimetypes.guess_type(real_filename)  # type: ignore
+		mime_type = get_content_type(guessed_type[0] or self.fallback_mimetype, "utf-8")
+		f, mtime, file_size = file_loader()
+
+		headers = [("Date", http_date())]
+
+		if self.cache:
+			timeout = self.cache_timeout
+			etag = self.generate_etag(mtime, file_size, real_filename)  # type: ignore
+			headers += [
+				("Etag", f'"{etag}"'),
+				("Cache-Control", f"max-age={timeout}, public"),
+			]
+
+			if not is_resource_modified(environ, etag, last_modified=mtime):
+				f.close()
+				start_response("304 Not Modified", headers)
+				return []
+
+			headers.append(("Expires", http_date(time.time() + timeout)))
+		else:
+			headers.append(("Cache-Control", "public"))
+
+		headers.extend(
+			(
+				("Content-Type", mime_type),
+				("Content-Length", str(file_size)),
+				("Last-Modified", http_date(mtime)),
+			)
+		)
+		start_response("200 OK", headers)
+		return wrap_file(environ, f)
 
 def create_app(host, port, app_port, protocol="http", with_static=True):
 	'''use the disapatcherMiddleware to connect SharedDataMiddleware and ProxyMiddleware with the wrapping app.'''
@@ -89,7 +173,7 @@ def create_app(host, port, app_port, protocol="http", with_static=True):
 		staticRoutes = buildStaticRoutes()
 
 		for route,config in staticRoutes.items():
-			static_app = SharedDataMiddleware(app.wsgi_app,
+			static_app = mySharedData(app.wsgi_app,
 			{
 				route:  os.path.join(applicationFolder, config["path"])
 			})

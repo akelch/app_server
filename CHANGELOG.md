@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.6.0] - 2021-09-15
+- url handlers can now contain regex patterns
+
 ## [0.5.8] - 2021-09-15
 - added some GAE environment variables.
 

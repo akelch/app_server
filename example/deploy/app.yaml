@@ -1,4 +1,8 @@
 handlers:
+- url: /pyodide/(.*\.wasm)$
+  static_files: pyodide/\1
+  upload: pyodide/.*\.wasm$
+  mime_type: text/plain
 - url: /static
   static_dir: static
 - url: /favicon.ico
