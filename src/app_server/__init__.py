@@ -121,6 +121,8 @@ def envVars(application_id):
 	'''set nessesary environment variables'''
 	os.environ["GAE_ENV"] = "localdev"
 	os.environ["CLOUDSDK_CORE_PROJECT"] = application_id
+	os.environ["GOOGLE_CLOUD_PROJECT"] = application_id
+	os.environ["GAE_VERSION"] = str(time.time())
 
 def main():
 	'''main entrypoint

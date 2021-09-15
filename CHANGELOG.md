@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.5.8] - 2021-09-15
+- added some GAE environment variables.
+
 ## [0.5.7] - 2021-09-09
 - gunicorn now reloads on file change
 - added a start delay preventing connection errors
