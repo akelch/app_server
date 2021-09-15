@@ -9,6 +9,7 @@ from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
 
+__version__ = "0.6.1"
 
 applicationFolder = ""
 
@@ -230,6 +231,7 @@ def main():
 	ap.add_argument('--app_port', type=int, default=8090, help='internal gunicorn port')
 	ap.add_argument('--worker', type=int, default=1, help='amount of gunicorn workers')
 	ap.add_argument('--threads', type=int, default=5, help='amount of gunicorn threads')
+	ap.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__)
 
 	args = ap.parse_args()
 	print(args)
