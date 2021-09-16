@@ -9,7 +9,7 @@ from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
 
-__version__ = "0.6.1"
+__version__ = "0.7.0"
 
 
 class WrappingApp(object):
