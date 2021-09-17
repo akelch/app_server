@@ -13,232 +13,232 @@ __version__ = "0.7.0"
 
 
 class WrappingApp(object):
-	"""simple wrapping app"""
+    """simple wrapping app"""
 
-	def __init__(self, config):
-		pass
+    def __init__(self, config):
+        pass
 
-	def wsgi_app(self, environ, start_response):
-		request = Request(environ)
-		response = Response(f'Path not found or invalid: {request.path}', status=404)
-		return response(environ, start_response)
+    def wsgi_app(self, environ, start_response):
+        request = Request(environ)
+        response = Response(f'Path not found or invalid: {request.path}', status=404)
+        return response(environ, start_response)
 
-	def __call__(self, environ, start_response):
-		return self.wsgi_app(environ, start_response)
+    def __call__(self, environ, start_response):
+        return self.wsgi_app(environ, start_response)
 
 
 class myProxy(ProxyMiddleware):
-	"""this addition allows to redirect all routes to given targets"""
+    """this addition allows to redirect all routes to given targets"""
 
-	def __init__(self, app, targets, chunk_size=2 << 13, timeout=10):
-		super().__init__(app, targets, chunk_size, timeout)
+    def __init__(self, app, targets, chunk_size=2 << 13, timeout=10):
+        super().__init__(app, targets, chunk_size, timeout)
 
-		def _set_defaults(opts):
-			opts.setdefault("remove_prefix", False)
-			opts.setdefault("host", "<auto>")
-			opts.setdefault("headers", {})
-			opts.setdefault("ssl_context", None)
-			return opts
+        def _set_defaults(opts):
+            opts.setdefault("remove_prefix", False)
+            opts.setdefault("host", "<auto>")
+            opts.setdefault("headers", {})
+            opts.setdefault("ssl_context", None)
+            return opts
 
-		self.targets = {
-			f"{k}": _set_defaults(v) for k, v in targets.items()
-		}
+        self.targets = {
+            f"{k}": _set_defaults(v) for k, v in targets.items()
+        }
 
 
 class myDispatcher(DispatcherMiddleware):
-	"""use regex to find a matching route"""
+    """use regex to find a matching route"""
 
-	def __call__(self, environ, start_response):
-		app = self.mounts["/"]
+    def __call__(self, environ, start_response):
+        app = self.mounts["/"]
 
-		for route, _app in self.mounts.items():
-			if re.match(route, environ["PATH_INFO"]):
-				app = _app
-				break
+        for route, _app in self.mounts.items():
+            if re.match(route, environ["PATH_INFO"]):
+                app = _app
+                break
 
-		return app(environ, start_response)
+        return app(environ, start_response)
 
 
 class mySharedData(SharedDataMiddleware):
-	"""use regex to find a matching files"""
+    """use regex to find a matching files"""
 
-	def __init__(
-			self,
-			app,
-			exports,
-			disallow: None = None,
-			cache: bool = True,
-			cache_timeout: int = 60 * 60 * 12,
-			fallback_mimetype: str = "application/octet-stream",
-	) -> None:
-		self.org_exports = exports.copy()
-		super().__init__(app, exports, disallow, cache, cache_timeout, fallback_mimetype)
+    def __init__(
+            self,
+            app,
+            exports,
+            disallow: None = None,
+            cache: bool = True,
+            cache_timeout: int = 60 * 60 * 12,
+            fallback_mimetype: str = "application/octet-stream",
+    ) -> None:
+        self.org_exports = exports.copy()
+        super().__init__(app, exports, disallow, cache, cache_timeout, fallback_mimetype)
 
-	def __call__(self, environ, start_response):
-		path = get_path_info(environ)
-		file_loader = None
+    def __call__(self, environ, start_response):
+        path = get_path_info(environ)
+        file_loader = None
 
-		for search_path, loader in self.exports:
-			# lets check for regex, and inject real_path
-			if re.match(search_path, path):
-				real_path = re.sub(search_path, self.org_exports[search_path], path, 1)
-				real_filename, file_loader = self.get_file_loader(real_path)(None)
+        for search_path, loader in self.exports:
+            # lets check for regex, and inject real_path
+            if re.match(search_path, path):
+                real_path = re.sub(search_path, self.org_exports[search_path], path, 1)
+                real_filename, file_loader = self.get_file_loader(real_path)(None)
 
-				if file_loader is not None:
-					break
+                if file_loader is not None:
+                    break
 
-			if search_path == path:
-				real_filename, file_loader = loader(None)
+            if search_path == path:
+                real_filename, file_loader = loader(None)
 
-				if file_loader is not None:
-					break
+                if file_loader is not None:
+                    break
 
-			if not search_path.endswith("/"):
-				search_path += "/"
+            if not search_path.endswith("/"):
+                search_path += "/"
 
-			if path.startswith(search_path):
-				real_filename, file_loader = loader(path[len(search_path):])
+            if path.startswith(search_path):
+                real_filename, file_loader = loader(path[len(search_path):])
 
-				if file_loader is not None:
-					break
+                if file_loader is not None:
+                    break
 
-		if file_loader is None or not self.is_allowed(real_filename):  # type: ignore
-			return self.app(environ, start_response)
+        if file_loader is None or not self.is_allowed(real_filename):  # type: ignore
+            return self.app(environ, start_response)
 
-		guessed_type = mimetypes.guess_type(real_filename)  # type: ignore
-		mime_type = get_content_type(guessed_type[0] or self.fallback_mimetype, "utf-8")
+        guessed_type = mimetypes.guess_type(real_filename)  # type: ignore
+        mime_type = get_content_type(guessed_type[0] or self.fallback_mimetype, "utf-8")
 
-		try:
-			f, mtime, file_size = file_loader()
-		except:
-			return self.app(environ, start_response)  # 404
+        try:
+            f, mtime, file_size = file_loader()
+        except:
+            return self.app(environ, start_response)  # 404
 
-		headers = [("Date", http_date())]
+        headers = [("Date", http_date())]
 
-		if self.cache:
-			timeout = self.cache_timeout
-			etag = self.generate_etag(mtime, file_size, real_filename)  # type: ignore
-			headers += [
-				("Etag", f'"{etag}"'),
-				("Cache-Control", f"max-age={timeout}, public"),
-			]
+        if self.cache:
+            timeout = self.cache_timeout
+            etag = self.generate_etag(mtime, file_size, real_filename)  # type: ignore
+            headers += [
+                ("Etag", f'"{etag}"'),
+                ("Cache-Control", f"max-age={timeout}, public"),
+            ]
 
-			if not is_resource_modified(environ, etag, last_modified=mtime):
-				f.close()
-				start_response("304 Not Modified", headers)
-				return []
+            if not is_resource_modified(environ, etag, last_modified=mtime):
+                f.close()
+                start_response("304 Not Modified", headers)
+                return []
 
-			headers.append(("Expires", http_date(time.time() + timeout)))
-		else:
-			headers.append(("Cache-Control", "public"))
+            headers.append(("Expires", http_date(time.time() + timeout)))
+        else:
+            headers.append(("Cache-Control", "public"))
 
-		headers.extend(
-			(
-				("Content-Type", mime_type),
-				("Content-Length", str(file_size)),
-				("Last-Modified", http_date(mtime)),
-			)
-		)
-		start_response("200 OK", headers)
-		return wrap_file(environ, f)
+        headers.extend(
+            (
+                ("Content-Type", mime_type),
+                ("Content-Length", str(file_size)),
+                ("Last-Modified", http_date(mtime)),
+            )
+        )
+        start_response("200 OK", headers)
+        return wrap_file(environ, f)
 
 
 def start_server(host, port, gunicorn_port, appFolder, appYaml, protocol="http"):
-	"""use the dispatcherMiddleware to connect SharedDataMiddleware and ProxyMiddleware with the wrapping app."""
-	app = WrappingApp({})
-	apps = {}
+    """use the dispatcherMiddleware to connect SharedDataMiddleware and ProxyMiddleware with the wrapping app."""
+    app = WrappingApp({})
+    apps = {}
 
-	# make shared middlewares for static files as configured in app.yaml
-	for route in appYaml["handlers"]:
-		if path := route.get("static_dir"):
-			pattern = route["url"] + "/.*"
+    # make shared middlewares for static files as configured in app.yaml
+    for route in appYaml["handlers"]:
+        if path := route.get("static_dir"):
+            pattern = route["url"] + "/.*"
 
-		elif path := route.get("static_files"):
-			pattern = route["url"]
+        elif path := route.get("static_files"):
+            pattern = route["url"]
 
-		else:
-			continue  # skip
+        else:
+            continue  # skip
 
-		# print(pattern, route["url"], path)
-		apps[pattern] = mySharedData(app.wsgi_app, {route["url"]: os.path.join(appFolder, path)})
+        # print(pattern, route["url"], path)
+        apps[pattern] = mySharedData(app.wsgi_app, {route["url"]: os.path.join(appFolder, path)})
 
-	apps.update({"/": myProxy(app.wsgi_app, {
-		"/": {
-			"target": f"{protocol}://{host}:{gunicorn_port}/",
-			"host": f"{host}:{port}"
-		}
-	})})
-	app.wsgi_app = myDispatcher(app.wsgi_app, apps)
+    apps.update({"/": myProxy(app.wsgi_app, {
+        "/": {
+            "target": f"{protocol}://{host}:{gunicorn_port}/",
+            "host": f"{host}:{port}"
+        }
+    })})
+    app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
-	time.sleep(5)
-	run_simple(host, port, app, use_debugger=True, use_reloader=True, threaded=True)
+    time.sleep(5)
+    run_simple(host, port, app, use_debugger=True, use_reloader=True, threaded=True)
 
 
 def envVars(application_id):
-	"""set nessesary environment variables"""
-	os.environ["GAE_ENV"] = "localdev"
-	os.environ["CLOUDSDK_CORE_PROJECT"] = application_id
-	os.environ["GOOGLE_CLOUD_PROJECT"] = application_id
-	os.environ["GAE_VERSION"] = str(time.time())
+    """set nessesary environment variables"""
+    os.environ["GAE_ENV"] = "localdev"
+    os.environ["CLOUDSDK_CORE_PROJECT"] = application_id
+    os.environ["GOOGLE_CLOUD_PROJECT"] = application_id
+    os.environ["GAE_VERSION"] = str(time.time())
 
 
 def main():
-	"""main entrypoint
+    """main entrypoint
 
-	collect parameters
-	set environment variables
-	start gunicorn
-	start wrapping app
-	"""
-	ap = argparse.ArgumentParser(
-		description="alternative dev_appserver"
-	)
+    collect parameters
+    set environment variables
+    start gunicorn
+    start wrapping app
+    """
+    ap = argparse.ArgumentParser(
+        description="alternative dev_appserver"
+    )
 
-	ap.add_argument("config_paths", metavar='yaml_path', nargs='+', help='Path to app.yaml file')
-	ap.add_argument(
-		'-A', '--application', action='store', dest='app_id', required=True,
-		help='Set the application, overriding the application value from the app.yaml file.')
-	ap.add_argument('--host', default="localhost", help='host name to which application modules should bind')
-	ap.add_argument('--port', type=int, default=8080, help='port to which we bind the application')
-	ap.add_argument('--gunicorn_port', type=int, default=8090, help='internal gunicorn port')
-	ap.add_argument('--worker', type=int, default=1, help='amount of gunicorn workers')
-	ap.add_argument('--threads', type=int, default=5, help='amount of gunicorn threads')
-	ap.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__)
+    ap.add_argument("config_paths", metavar='yaml_path', nargs='+', help='Path to app.yaml file')
+    ap.add_argument(
+        '-A', '--application', action='store', dest='app_id', required=True,
+        help='Set the application, overriding the application value from the app.yaml file.')
+    ap.add_argument('--host', default="localhost", help='host name to which application modules should bind')
+    ap.add_argument('--port', type=int, default=8080, help='port to which we bind the application')
+    ap.add_argument('--gunicorn_port', type=int, default=8090, help='internal gunicorn port')
+    ap.add_argument('--worker', type=int, default=1, help='amount of gunicorn workers')
+    ap.add_argument('--threads', type=int, default=5, help='amount of gunicorn threads')
+    ap.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__)
 
-	args = ap.parse_args()
-	envVars(args.app_id)
+    args = ap.parse_args()
+    envVars(args.app_id)
 
-	myFolder = os.getcwd()
-	appFolder = os.path.abspath(args.config_paths[0])
+    myFolder = os.getcwd()
+    appFolder = os.path.abspath(args.config_paths[0])
 
-	# load & parse the app.yaml
-	with open(os.path.join(appFolder, "app.yaml"), "r") as f:
-		appYaml = yaml.load(f, Loader=yaml.Loader)
+    # load & parse the app.yaml
+    with open(os.path.join(appFolder, "app.yaml"), "r") as f:
+        appYaml = yaml.load(f, Loader=yaml.Loader)
 
-	# Check for correct runtime
-	myRuntime = f"python{sys.version_info.major}{sys.version_info.minor}"
-	appRuntime = appYaml["runtime"]
-	assert appRuntime == myRuntime, f"app.yaml specifies {appRuntime} but you're on {myRuntime}, please correct this."
+    # Check for correct runtime
+    myRuntime = f"python{sys.version_info.major}{sys.version_info.minor}"
+    appRuntime = appYaml["runtime"]
+    assert appRuntime == myRuntime, f"app.yaml specifies {appRuntime} but you're on {myRuntime}, please correct this."
 
-	# Gunicorn call command
-	entrypoint = appYaml.get("entrypoint", "gunicorn -b :$PORT -w $WORKER --threads $THREADS "
-	                                       "--disable-redirect-access-to-syslog main:app")
-	for var, value in {
-		"PORT": args.gunicorn_port,
-		"WORKER": args.worker,
-		"THREADS": args.threads
-	}.items():
-		entrypoint = entrypoint.replace(f"${var}", str(value))
+    # Gunicorn call command
+    entrypoint = appYaml.get("entrypoint", "gunicorn -b :$PORT -w $WORKER --threads $THREADS "
+                                           "--disable-redirect-access-to-syslog main:app")
+    for var, value in {
+        "PORT": args.gunicorn_port,
+        "WORKER": args.worker,
+        "THREADS": args.threads
+    }.items():
+        entrypoint = entrypoint.replace(f"${var}", str(value))
 
-	entrypoint = entrypoint.split()
-	if "--reload" not in entrypoint:
-		entrypoint.insert(1, "--reload")
+    entrypoint = entrypoint.split()
+    if "--reload" not in entrypoint:
+        entrypoint.insert(1, "--reload")
 
-	os.chdir(appFolder)
-	subprocess.Popen(entrypoint)
-	os.chdir(myFolder)
-	start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml)
+    os.chdir(appFolder)
+    subprocess.Popen(entrypoint)
+    os.chdir(myFolder)
+    start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml)
 
 
 if __name__ == '__main__':
-	main()
+    main()

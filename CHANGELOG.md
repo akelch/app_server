@@ -2,6 +2,13 @@
 
 This file documents any relevant changes.
 
+## [0.7.0] - 2021-09-17
+- clean up entire source
+- dropping of several functions, to make the source code easier to read
+- Improved PEP8-conformity
+- Check on runtime version and correct Python version
+- Use entrypoint from app.yaml, with additional variables
+
 ## [0.6.1] - 2021-09-16
 - Improved version number maintenance
 - Better handling for regex-statics 

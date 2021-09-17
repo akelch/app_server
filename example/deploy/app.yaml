@@ -1,3 +1,5 @@
+runtime: python38
+
 handlers:
 - url: /pyodide/(.*\.wasm)$
   static_files: pyodide/\1
