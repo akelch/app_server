@@ -196,8 +196,7 @@ def main():
 
     ap.add_argument("config_paths", metavar='yaml_path', nargs='+', help='Path to app.yaml file')
     ap.add_argument(
-        '-A', '--application', action='store', dest='app_id', required=True,
-        help='Set the application, overriding the application value from the app.yaml file.')
+        '-A', '--application', action='store', dest='app_id', required=True, help='Set the application id')
     ap.add_argument('--host', default="localhost", help='host name to which application modules should bind')
     ap.add_argument('--port', type=int, default=8080, help='port to which we bind the application')
     ap.add_argument('--gunicorn_port', type=int, default=8090, help='internal gunicorn port')
