@@ -143,7 +143,7 @@ class mySharedData(SharedDataMiddleware):
         return wrap_file(environ, f)
 
 
-def start_server(host, port, gunicorn_port, appFolder, appYaml, protocol="http"):
+def start_server(host, port, gunicorn_port, appFolder, appYaml,timeout, protocol="http"):
     """use the dispatcherMiddleware to connect SharedDataMiddleware and ProxyMiddleware with the wrapping app."""
     app = WrappingApp({})
     apps = {}
@@ -167,7 +167,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, protocol="http")
             "target": f"{protocol}://{host}:{gunicorn_port}/",
             "host": f"{host}:{port}"
         }
-    })})
+    },timeout=timeout)})
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
     time.sleep(5)
@@ -202,6 +202,7 @@ def main():
     ap.add_argument('--gunicorn_port', type=int, default=8090, help='internal gunicorn port')
     ap.add_argument('--worker', type=int, default=1, help='amount of gunicorn workers')
     ap.add_argument('--threads', type=int, default=5, help='amount of gunicorn threads')
+    ap.add_argument('--timeout', type=int, default=10, help='Time is seconds befor gunicorn abort a rquest')
     ap.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__)
 
     args = ap.parse_args()
@@ -236,8 +237,9 @@ def main():
     os.chdir(appFolder)
     subprocess.Popen(entrypoint)
     os.chdir(myFolder)
-    start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml)
+    start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml,ap.timeout)
 
 
 if __name__ == '__main__':
     main()
+
