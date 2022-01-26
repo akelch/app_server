@@ -237,7 +237,7 @@ def main():
     os.chdir(appFolder)
     subprocess.Popen(entrypoint)
     os.chdir(myFolder)
-    start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml,ap.timeout)
+    start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml,args.timeout)
 
 
 if __name__ == '__main__':
