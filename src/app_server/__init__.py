@@ -9,7 +9,7 @@ from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
 
-__version__ = "0.7.0"
+__version__ = "0.7.2"
 
 
 class WrappingApp(object):
@@ -143,7 +143,7 @@ class mySharedData(SharedDataMiddleware):
         return wrap_file(environ, f)
 
 
-def start_server(host, port, gunicorn_port, appFolder, appYaml,timeout, protocol="http"):
+def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protocol="http"):
     """use the dispatcherMiddleware to connect SharedDataMiddleware and ProxyMiddleware with the wrapping app."""
     app = WrappingApp({})
     apps = {}
@@ -233,11 +233,13 @@ def main():
     entrypoint = entrypoint.split()
     if "--reload" not in entrypoint:
         entrypoint.insert(1, "--reload")
+    if "--reuse-port" not in entrypoint:
+        entrypoint.insert(1, "--reuse-port")
 
     os.chdir(appFolder)
     subprocess.Popen(entrypoint)
     os.chdir(myFolder)
-    start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml,args.timeout)
+    start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml, args.timeout)
 
 
 if __name__ == '__main__':

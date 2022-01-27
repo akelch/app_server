@@ -2,6 +2,10 @@
 
 This file documents any relevant changes.
 
+## [0.7.2] - 2021-09-17
+- we now reuse gunicorn porn
+- added timeout till 502 error 
+
 ## [0.7.0] - 2021-09-17
 - clean up entire source
 - dropping of several functions, to make the source code easier to read
