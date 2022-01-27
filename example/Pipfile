@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-app_server={path="./.."}
+app_server={path="./..", editable = true}
 
 [dev-packages]
 
