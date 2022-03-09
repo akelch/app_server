@@ -9,7 +9,7 @@ from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
 
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 
 class WrappingApp(object):
@@ -171,7 +171,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
     time.sleep(5)
-    run_simple(host, port, app, use_debugger=True, use_reloader=True, threaded=True)
+    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True)
 
 
 def envVars(application_id):
@@ -180,6 +180,7 @@ def envVars(application_id):
     os.environ["CLOUDSDK_CORE_PROJECT"] = application_id
     os.environ["GOOGLE_CLOUD_PROJECT"] = application_id
     os.environ["GAE_VERSION"] = str(time.time())
+    os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
 
 
 def main():
@@ -202,7 +203,7 @@ def main():
     ap.add_argument('--gunicorn_port', type=int, default=8090, help='internal gunicorn port')
     ap.add_argument('--worker', type=int, default=1, help='amount of gunicorn workers')
     ap.add_argument('--threads', type=int, default=5, help='amount of gunicorn threads')
-    ap.add_argument('--timeout', type=int, default=10, help='Time is seconds befor gunicorn abort a rquest')
+    ap.add_argument('--timeout', type=int, default=60, help='Time is seconds befor gunicorn abort a rquest')
     ap.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__)
 
     args = ap.parse_args()

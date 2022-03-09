@@ -2,6 +2,10 @@
 
 This file documents any relevant changes.
 
+## [0.7.3] - 2022-03-09
+- disabled gRPC fork support
+- increased default timeout to 60 Sesconds
+
 ## [0.7.2] - 2021-09-17
 - we now reuse gunicorn porn
 - added timeout till 502 error 
