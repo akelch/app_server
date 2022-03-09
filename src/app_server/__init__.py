@@ -1,15 +1,35 @@
-import sys, os, re, subprocess, yaml, argparse, time, mimetypes
+import sys, os, re, subprocess, yaml, argparse, time, mimetypes, logging
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.middleware.shared_data import SharedDataMiddleware
 from werkzeug.middleware.http_proxy import ProxyMiddleware
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from werkzeug.serving import run_simple
+from werkzeug.serving import run_simple, WSGIRequestHandler
 from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
-
+from werkzeug._internal import _log,_ColorStreamHandler
 __version__ = "0.7.3"
+
+class myWSGIRequestHandler(WSGIRequestHandler):
+    def log_date_time_string(self):
+        """Return the current time formatted for logging."""
+        now = time.time()
+        year, month, day, hh, mm, ss, x, y, z = time.localtime(now)
+        s = "%04d-%02d-%02d %02d:%02d:%02d" % (
+            year , month,day , hh, mm, ss)
+        return s
+
+    def log(self, type: str, message: str, *args) -> None:
+        _logger = logging.getLogger("werkzeug")
+        _logger.setLevel(logging.INFO)
+        _logger.addHandler(logging.StreamHandler())
+
+        msg = " ".join(args[0].split(" ")[:-1])+"\033[0m"
+
+        getattr(_logger, type)(f"[{self.log_date_time_string()}] [{args[1]}] {msg}")
+
+
 
 
 class WrappingApp(object):
@@ -25,7 +45,6 @@ class WrappingApp(object):
 
     def __call__(self, environ, start_response):
         return self.wsgi_app(environ, start_response)
-
 
 class myProxy(ProxyMiddleware):
     """this addition allows to redirect all routes to given targets"""
@@ -171,7 +190,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
     time.sleep(5)
-    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True)
+    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True,request_handler=myWSGIRequestHandler)
 
 
 def envVars(application_id):
