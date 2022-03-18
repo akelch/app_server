@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.7.4] - 2022-03-18
+- disabled custom logger
+
 ## [0.7.3] - 2022-03-09
 - disabled gRPC fork support
 - increased default timeout to 60 Sesconds
