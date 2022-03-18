@@ -9,7 +9,7 @@ from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
 from werkzeug._internal import _log,_ColorStreamHandler
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 class myWSGIRequestHandler(WSGIRequestHandler):
     def log_date_time_string(self):
@@ -190,7 +190,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
     time.sleep(5)
-    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True,request_handler=myWSGIRequestHandler)
+    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True)
 
 
 def envVars(application_id):
