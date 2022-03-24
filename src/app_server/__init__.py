@@ -13,7 +13,7 @@ from werkzeug.urls import uri_to_iri
 
 
 
-__version__ = "0.7.5.1"
+__version__ = "0.8"
 
 class myWSGIRequestHandler(WSGIRequestHandler):
     def log_date_time_string(self):
@@ -233,7 +233,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True, request_handler=myWSGIRequestHandler)
 
 
-def envVars(application_id):
+def envVars(application_id, args):
     """set nessesary environment variables"""
     os.environ["GAE_ENV"] = "localdev"
     os.environ["CLOUDSDK_CORE_PROJECT"] = application_id
@@ -241,6 +241,8 @@ def envVars(application_id):
     os.environ["GAE_VERSION"] = str(time.time())
     os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
 
+    if args.storage:
+        os.environ["STORAGE_EMULATOR_HOST"] = f"http://{args.host}:{args.storage_port}"
 
 def main():
     """main entrypoint
@@ -265,8 +267,11 @@ def main():
     ap.add_argument('--timeout', type=int, default=60, help='Time is seconds befor gunicorn abort a rquest')
     ap.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__)
 
+    ap.add_argument('--storage', default=False, action="store_true", dest="storage", help="also start Storage Emulator")
+    ap.add_argument('--storage_port', type=int, default=8092, help='internal Storage Emulator Port')
+
     args = ap.parse_args()
-    envVars(args.app_id)
+    envVars(args.app_id, args)
 
     myFolder = os.getcwd()
     appFolder = os.path.abspath(args.config_paths[0])
@@ -299,6 +304,11 @@ def main():
     os.chdir(appFolder)
     subprocess.Popen(entrypoint)
     os.chdir(myFolder)
+
+    if args.storage:
+        subprocess.Popen(
+            f"gcloud-storage-emulator start --port={args.storage_port} --default-bucket={args.app_id}.appspot.com".split())
+
     start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml, args.timeout)
 
 
