@@ -1,15 +1,19 @@
 import sys, os, re, subprocess, yaml, argparse, time, mimetypes, logging
-
+import typing as t
 from werkzeug.wrappers import Request, Response
 from werkzeug.middleware.shared_data import SharedDataMiddleware
 from werkzeug.middleware.http_proxy import ProxyMiddleware
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from werkzeug.serving import run_simple, WSGIRequestHandler
+from werkzeug.serving import run_simple, WSGIRequestHandler,_ansi_style,_log_add_style
 from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
-from werkzeug._internal import _log,_ColorStreamHandler
-__version__ = "0.7.4"
+from werkzeug._internal import _logger
+from werkzeug.urls import uri_to_iri
+
+
+
+__version__ = "0.7.5.1"
 
 class myWSGIRequestHandler(WSGIRequestHandler):
     def log_date_time_string(self):
@@ -20,14 +24,50 @@ class myWSGIRequestHandler(WSGIRequestHandler):
             year , month,day , hh, mm, ss)
         return s
 
+    def log_request(
+        self, code: t.Union[int, str] = "-", size: t.Union[int, str] = "-"
+    ) -> None:
+        """coloring the status code"""
+        try:
+            path = uri_to_iri(self.path)
+            msg = f"[{self.command}] {path}"
+        except AttributeError:
+            # path isn't set if the requestline was bad
+            msg = self.requestline
+
+        code = str(code)
+
+        log_type = "info"
+        if code != "200": #possibility to filter 200 requests
+            log_type = "warning"
+
+        if _log_add_style:
+            if code[0] == "1":  # 1xx - Informational
+                code = _ansi_style(code, "bold")
+            elif code == "200":  # 2xx - Success
+                pass
+            elif code == "304":  # 304 - Resource Not Modified
+                code = _ansi_style(code, "cyan")
+            elif code[0] == "3":  # 3xx - Redirection
+                code = _ansi_style(code, "green")
+            elif code == "404":  # 404 - Resource Not Found
+                code = _ansi_style(code, "yellow")
+            elif code[0] == "4":  # 4xx - Client Error
+                code = _ansi_style(code, "bold", "red")
+            else:  # 5xx, or any other response
+                code = _ansi_style(code, "bold", "red")
+
+        self.log(log_type, '[%s] %s', code, msg)
+
     def log(self, type: str, message: str, *args) -> None:
-        _logger = logging.getLogger("werkzeug")
-        _logger.setLevel(logging.INFO)
-        _logger.addHandler(logging.StreamHandler())
+        global _logger
 
-        msg = " ".join(args[0].split(" ")[:-1])+"\033[0m"
+        if _logger is None:
+            _logger = logging.getLogger("werkzeug")
+            _logger.setLevel(logging.INFO)
+            _logger.addHandler(logging.StreamHandler())
 
-        getattr(_logger, type)(f"[{self.log_date_time_string()}] [{args[1]}] {msg}")
+        getattr(_logger, type)(f"[{self.log_date_time_string()}] {message % args}")
 
 
 
@@ -190,7 +230,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
     time.sleep(5)
-    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True)
+    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True, request_handler=myWSGIRequestHandler)
 
 
 def envVars(application_id):
