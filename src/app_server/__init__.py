@@ -13,7 +13,7 @@ from werkzeug.urls import uri_to_iri
 
 
 
-__version__ = "0.8"
+__version__ = "0.8.5"
 
 class myWSGIRequestHandler(WSGIRequestHandler):
     def log_date_time_string(self):
@@ -244,6 +244,9 @@ def envVars(application_id, args):
     if args.storage:
         os.environ["STORAGE_EMULATOR_HOST"] = f"http://{args.host}:{args.storage_port}"
 
+    if args.tasks:
+        os.environ["TASKS_EMULATOR"] = f"{args.host}:{args.tasks_port}"
+
 def main():
     """main entrypoint
 
@@ -269,6 +272,11 @@ def main():
 
     ap.add_argument('--storage', default=False, action="store_true", dest="storage", help="also start Storage Emulator")
     ap.add_argument('--storage_port', type=int, default=8092, help='internal Storage Emulator Port')
+
+    ap.add_argument('--tasks', default=False, action='store_true', dest="tasks", help='also start Task-Queue Emulator')
+    ap.add_argument('--tasks_port', type=int, default=8091, help='internal Task-Queue Emulator Port')
+
+    ap.add_argument('--cron', default=False, action='store_true', dest="cron", help='also start Cron Emulator')
 
     args = ap.parse_args()
     envVars(args.app_id, args)
@@ -308,6 +316,14 @@ def main():
     if args.storage:
         subprocess.Popen(
             f"gcloud-storage-emulator start --port={args.storage_port} --default-bucket={args.app_id}.appspot.com".split())
+
+    if args.tasks and os.path.exists(os.path.join(appFolder, 'queue.yaml')):
+        cron = ""
+        if args.cron:
+            cron = f"--cron-yaml={os.path.join(appFolder, 'cron.yaml')}"
+
+        subprocess.Popen(
+            f"gcloud-tasks-emulator start -p={args.tasks_port} -t={args.port} {cron} --queue-yaml={os.path.join(appFolder, 'queue.yaml')} --queue-yaml-project={args.app_id} --queue-yaml-location=local -r 50".split())
 
     start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml, args.timeout)
 
