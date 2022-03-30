@@ -2,6 +2,13 @@
 
 This file documents any relevant changes.
 
+## [0.8.6] - 2022-03-30
+- added task emulator
+- added cron emulator
+- added storage emulator
+- changed host from localhost to 0.0.0.0
+- added custom logging
+
 ## [0.7.4] - 2022-03-18
 - disabled custom logger
 
