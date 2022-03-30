@@ -2,7 +2,7 @@
 
 This file documents any relevant changes.
 
-## [0.8.6] - 2022-03-30
+## [0.8.5] - 2022-03-30
 - added task emulator
 - added cron emulator
 - added storage emulator
