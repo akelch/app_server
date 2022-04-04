@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.8.5] - 2022-04-04
+- disabled custom logging
+
 ## [0.8.5] - 2022-03-30
 - added task emulator
 - added cron emulator

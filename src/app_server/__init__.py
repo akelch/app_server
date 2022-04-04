@@ -13,7 +13,7 @@ from werkzeug.urls import uri_to_iri
 
 
 
-__version__ = "0.8.5"
+__version__ = "0.8.6"
 
 class myWSGIRequestHandler(WSGIRequestHandler):
     def log_date_time_string(self):
@@ -230,7 +230,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
     time.sleep(5)
-    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True, request_handler=myWSGIRequestHandler)
+    run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True) #, request_handler=myWSGIRequestHandler
 
 
 def envVars(application_id, args):
