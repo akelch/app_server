@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.8.7] - 2022-04-04
+- fix missing tasks folder
+
 ## [0.8.6] - 2022-04-04
 - disabled custom logging
 
