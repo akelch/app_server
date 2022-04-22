@@ -13,7 +13,9 @@ from werkzeug.urls import uri_to_iri
 
 
 
-__version__ = "0.8.7"
+__version__ = "0.9.0"
+
+subprocesses = []
 
 class myWSGIRequestHandler(WSGIRequestHandler):
     def log_date_time_string(self):
@@ -68,8 +70,6 @@ class myWSGIRequestHandler(WSGIRequestHandler):
             _logger.addHandler(logging.StreamHandler())
 
         getattr(_logger, type)(f"[{self.log_date_time_string()}] {message % args}")
-
-
 
 
 class WrappingApp(object):
@@ -229,7 +229,6 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     },timeout=timeout)})
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
 
-    time.sleep(5)
     run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True, request_handler=myWSGIRequestHandler)
 
 
@@ -247,6 +246,27 @@ def envVars(application_id, args):
     if args.tasks:
         os.environ["TASKS_EMULATOR"] = f"{args.host}:{args.tasks_port}"
 
+def start_gunicorn(args, appYaml, appFolder, myFolder):
+    # Gunicorn call command
+    entrypoint = appYaml.get("entrypoint", "gunicorn -b :$PORT -w $WORKER --threads $THREADS "
+                                           "--disable-redirect-access-to-syslog main:app")
+    for var, value in {
+        "PORT": args.gunicorn_port,
+        "WORKER": args.worker,
+        "THREADS": args.threads
+    }.items():
+        entrypoint = entrypoint.replace(f"${var}", str(value))
+
+    entrypoint = entrypoint.split()
+    if "--reload" not in entrypoint:
+        entrypoint.insert(1, "--reload")
+    if "--reuse-port" not in entrypoint:
+        entrypoint.insert(1, "--reuse-port")
+
+    os.chdir(appFolder)
+    subprocesses.append(subprocess.Popen(entrypoint))
+    os.chdir(myFolder)
+
 def main():
     """main entrypoint
 
@@ -262,7 +282,7 @@ def main():
     ap.add_argument("config_paths", metavar='yaml_path', nargs='+', help='Path to app.yaml file')
     ap.add_argument(
         '-A', '--application', action='store', dest='app_id', required=True, help='Set the application id')
-    ap.add_argument('--host', default="0.0.0.0", help='host name to which application modules should bind')
+    ap.add_argument('--host', default="localhost", help='host name to which application modules should bind')
     ap.add_argument('--port', type=int, default=8080, help='port to which we bind the application')
     ap.add_argument('--gunicorn_port', type=int, default=8090, help='internal gunicorn port')
     ap.add_argument('--worker', type=int, default=1, help='amount of gunicorn workers')
@@ -293,39 +313,35 @@ def main():
     appRuntime = appYaml["runtime"]
     assert appRuntime == myRuntime, f"app.yaml specifies {appRuntime} but you're on {myRuntime}, please correct this."
 
-    # Gunicorn call command
-    entrypoint = appYaml.get("entrypoint", "gunicorn -b :$PORT -w $WORKER --threads $THREADS "
-                                           "--disable-redirect-access-to-syslog main:app")
-    for var, value in {
-        "PORT": args.gunicorn_port,
-        "WORKER": args.worker,
-        "THREADS": args.threads
-    }.items():
-        entrypoint = entrypoint.replace(f"${var}", str(value))
+    if "WERKZEUG_RUN_MAIN" in os.environ and os.environ["WERKZEUG_RUN_MAIN"]:
+        #only start subprocesses wenn reloader starts
 
-    entrypoint = entrypoint.split()
-    if "--reload" not in entrypoint:
-        entrypoint.insert(1, "--reload")
-    if "--reuse-port" not in entrypoint:
-        entrypoint.insert(1, "--reuse-port")
+        if args.storage:
+            storage_subprocess =subprocess.Popen(
+                f"gcloud-storage-emulator start --port={args.storage_port} --default-bucket={args.app_id}.appspot.com".split())
 
-    os.chdir(appFolder)
-    subprocess.Popen(entrypoint)
-    os.chdir(myFolder)
+            subprocesses.append(storage_subprocess)
 
-    if args.storage:
-        subprocess.Popen(
-            f"gcloud-storage-emulator start --port={args.storage_port} --default-bucket={args.app_id}.appspot.com".split())
 
-    if args.tasks and os.path.exists(os.path.join(appFolder, 'queue.yaml')):
-        cron = ""
-        if args.cron:
-            cron = f"--cron-yaml={os.path.join(appFolder, 'cron.yaml')}"
+        if args.tasks and os.path.exists(os.path.join(appFolder, 'queue.yaml')):
+            cron = ""
+            if args.cron:
+                cron = f"--cron-yaml={os.path.join(appFolder, 'cron.yaml')}"
 
-        subprocess.Popen(
-            f"gcloud-tasks-emulator start -p={args.tasks_port} -t={args.port} {cron} --queue-yaml={os.path.join(appFolder, 'queue.yaml')} --queue-yaml-project={args.app_id} --queue-yaml-location=local -r 50".split())
+            tasks_subprocess = subprocess.Popen(
+                f"gcloud-tasks-emulator start -p={args.tasks_port} -t={args.port} {cron} --queue-yaml={os.path.join(appFolder, 'queue.yaml')} --queue-yaml-project={args.app_id} --queue-yaml-location=local -r 50".split())
+
+            subprocesses.append(tasks_subprocess)
+
+        start_gunicorn(args, appYaml, appFolder, myFolder)
 
     start_server(args.host, args.port, args.gunicorn_port, appFolder, appYaml, args.timeout)
+
+    try:
+        for process in subprocesses:
+            process.kill()
+    except:
+        pass
 
 
 if __name__ == '__main__':

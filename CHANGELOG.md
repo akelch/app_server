@@ -2,6 +2,12 @@
 
 This file documents any relevant changes.
 
+## [0.9.0] - 2022-04-22
+- switched host back to localhost
+- collect subprocesses and try to kill on exit
+- use watchdog for better reloading
+- only start subprocesses if reloader ready
+
 ## [0.8.7] - 2022-04-04
 - fix missing tasks folder
 
