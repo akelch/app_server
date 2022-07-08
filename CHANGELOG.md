@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.9.1] - 2022-07-08
+- fix: unicode urls
+
 ## [0.9.0] - 2022-04-22
 - switched host back to localhost
 - collect subprocesses and try to kill on exit
