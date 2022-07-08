@@ -9,7 +9,7 @@ from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
 from werkzeug._internal import _logger
-from werkzeug.urls import uri_to_iri
+from werkzeug.urls import uri_to_iri,url_unquote
 
 
 
@@ -26,9 +26,8 @@ class myWSGIRequestHandler(WSGIRequestHandler):
             year , month,day , hh, mm, ss)
         return s
 
-    def log_request(
-        self, code: t.Union[int, str] = "-", size: t.Union[int, str] = "-"
-    ) -> None:
+    def log_request(self, code: t.Union[int, str] = "-", size: t.Union[int, str] = "-") -> None:
+
         """coloring the status code"""
         try:
             path = uri_to_iri(self.path)
@@ -103,6 +102,17 @@ class myProxy(ProxyMiddleware):
             f"{k}": _set_defaults(v) for k, v in targets.items()
         }
 
+    def __call__(self, environ: "WSGIEnvironment", start_response: "StartResponse") -> t.Iterable[bytes]:
+
+        path = url_unquote(environ["RAW_URI"])
+        app = self.app
+
+        for prefix, opts in self.targets.items():
+            if path.startswith(prefix):
+                app = self.proxy_to(opts, path, prefix)
+                break
+
+        return app(environ, start_response)
 
 class myDispatcher(DispatcherMiddleware):
     """use regex to find a matching route"""
@@ -114,7 +124,6 @@ class myDispatcher(DispatcherMiddleware):
             if re.match(route, environ["PATH_INFO"]):
                 app = _app
                 break
-
         return app(environ, start_response)
 
 
