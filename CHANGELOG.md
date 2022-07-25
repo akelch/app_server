@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.9.2] - 2022-07-25
+- fix: dont unquote querystrings
+
 ## [0.9.1] - 2022-07-08
 - fix: unicode urls
 

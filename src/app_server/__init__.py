@@ -9,11 +9,11 @@ from werkzeug.wsgi import get_path_info, wrap_file
 from werkzeug.utils import get_content_type
 from werkzeug.http import http_date, is_resource_modified
 from werkzeug._internal import _logger
-from werkzeug.urls import uri_to_iri,url_unquote
+from werkzeug.urls import uri_to_iri, url_unquote
 
 
 
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 
 subprocesses = []
 
@@ -103,10 +103,8 @@ class myProxy(ProxyMiddleware):
         }
 
     def __call__(self, environ: "WSGIEnvironment", start_response: "StartResponse") -> t.Iterable[bytes]:
-
-        path = url_unquote(environ["RAW_URI"])
+        path = url_unquote(environ["PATH_INFO"])
         app = self.app
-
         for prefix, opts in self.targets.items():
             if path.startswith(prefix):
                 app = self.proxy_to(opts, path, prefix)
