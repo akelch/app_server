@@ -2,6 +2,9 @@
 
 This file documents any relevant changes.
 
+## [0.9.3] - 2023-03-27
+- fixated requirements
+
 ## [0.9.2] - 2022-07-25
 - fix: dont unquote querystrings
 
