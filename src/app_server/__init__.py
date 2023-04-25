@@ -103,7 +103,7 @@ class myProxy(ProxyMiddleware):
         }
 
     def __call__(self, environ: "WSGIEnvironment", start_response: "StartResponse") -> t.Iterable[bytes]:
-        path = url_unquote(environ["PATH_INFO"])
+        path = get_path_info(environ, charset='utf-8', errors='replace')
         app = self.app
         for prefix, opts in self.targets.items():
             if path.startswith(prefix):
