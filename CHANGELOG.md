@@ -1,7 +1,9 @@
 # Changelog
 
 This file documents any relevant changes.
-
+## [0.9.4] - 2023-05-04
+- fix: unicode urls
+- 
 ## [0.9.3] - 2023-03-27
 - fixated requirements
 
