@@ -1,6 +1,9 @@
 # Changelog
 
 This file documents any relevant changes.
+## [0.9.5] - 2023-09-14
+- fix: updated werkzeug and gunicorn
+
 ## [0.9.4] - 2023-05-04
 - fix: unicode urls
 - 
