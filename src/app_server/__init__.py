@@ -13,7 +13,7 @@ from werkzeug.urls import uri_to_iri, url_unquote
 
 
 
-__version__ = "0.9.5"
+__version__ = "0.9.6"
 
 subprocesses = []
 
@@ -253,6 +253,21 @@ def envVars(application_id, args):
     if args.tasks:
         os.environ["TASKS_EMULATOR"] = f"{args.host}:{args.tasks_port}"
 
+def patch_gunicorn():
+    import gunicorn.workers.base
+    with open(gunicorn.workers.base.__file__, 'r+') as file:
+        content = file.read()
+
+        if "except (SyntaxError, NameError) as e:" in content:
+            return 0
+
+        file.seek(0)
+        file.write(content.replace(
+            '        except SyntaxError as e:',
+            '        except (SyntaxError, NameError) as e:'
+        ))
+
+
 def start_gunicorn(args, appYaml, appFolder, myFolder):
     # Gunicorn call command
     entrypoint = appYaml.get("entrypoint", "gunicorn -b :$PORT -w $WORKER --threads $THREADS "
@@ -307,7 +322,7 @@ def main():
 
     args = ap.parse_args()
     envVars(args.app_id, args)
-
+    patch_gunicorn()
     myFolder = os.getcwd()
     appFolder = os.path.abspath(args.config_paths[0])
 

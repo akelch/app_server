@@ -1,6 +1,11 @@
 # Changelog
 
 This file documents any relevant changes.
+## [0.9.6] - 2023-09-15
+- fix: updated grpcio to support python 3.11
+- fix: gunicorn will be patched on start up
+
+
 ## [0.9.5] - 2023-09-14
 - fix: updated werkzeug and gunicorn
 
