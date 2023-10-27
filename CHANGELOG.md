@@ -1,6 +1,10 @@
 # Changelog
 
 This file documents any relevant changes.
+## [0.9.7] - 2023-10.27
+- fix: readded subdomain support
+- feat: added editorconf
+
 ## [0.9.6] - 2023-09-15
 - fix: updated grpcio to support python 3.11
 - fix: gunicorn will be patched on start up
