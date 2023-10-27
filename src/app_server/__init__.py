@@ -231,7 +231,7 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     apps.update({"/": myProxy(app.wsgi_app, {
         "/": {
             "target": f"{protocol}://{host}:{gunicorn_port}/",
-            "host": f"{host}:{port}"
+            "host": None
         }
     },timeout=timeout)})
     app.wsgi_app = myDispatcher(app.wsgi_app, apps)
