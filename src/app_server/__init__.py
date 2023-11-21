@@ -260,9 +260,8 @@ def envVars(application_id: str, args: argparse.Namespace, app_yaml: dict):
     if args.tasks:
         os.environ["TASKS_EMULATOR"] = f"{args.host}:{args.tasks_port}"
 
-    # Merge environment variables form CLI parameter
+    # Merge environment variables from CLI parameter
     if args.env_var:
-        print(dict(v.split("=", 1) for v in args.env_var))
         os.environ |= dict(v.split("=", 1) for v in args.env_var)
 
 def patch_gunicorn():
