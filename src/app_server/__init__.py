@@ -239,8 +239,15 @@ def start_server(host, port, gunicorn_port, appFolder, appYaml, timeout, protoco
     run_simple(host, port, app, use_debugger=False, use_reloader=True, threaded=True, request_handler=myWSGIRequestHandler)
 
 
-def envVars(application_id, args):
-    """set nessesary environment variables"""
+def envVars(application_id: str, args: argparse.Namespace, app_yaml: dict):
+    """set necessary environment variables"""
+    # First, merge the app.yaml into the environment so that the variables
+    # from the CLI can overwrite it.
+    if env_vars := app_yaml.get("env_variables"):
+        if not isinstance(env_vars, dict):
+            raise TypeError(f"env_variables section in app.yaml must be a dict. Got {type(env_vars)}")
+        os.environ |= {k: str(v) for k, v in app_yaml["env_variables"].items()}
+
     os.environ["GAE_ENV"] = "localdev"
     os.environ["CLOUDSDK_CORE_PROJECT"] = application_id
     os.environ["GOOGLE_CLOUD_PROJECT"] = application_id
@@ -252,6 +259,10 @@ def envVars(application_id, args):
 
     if args.tasks:
         os.environ["TASKS_EMULATOR"] = f"{args.host}:{args.tasks_port}"
+
+    # Merge environment variables from CLI parameter
+    if args.env_var:
+        os.environ |= dict(v.split("=", 1) for v in args.env_var)
 
 def patch_gunicorn():
     import gunicorn.workers.base
@@ -309,7 +320,7 @@ def main():
     ap.add_argument('--gunicorn_port', type=int, default=8090, help='internal gunicorn port')
     ap.add_argument('--worker', type=int, default=1, help='amount of gunicorn workers')
     ap.add_argument('--threads', type=int, default=5, help='amount of gunicorn threads')
-    ap.add_argument('--timeout', type=int, default=60, help='Time is seconds befor gunicorn abort a rquest')
+    ap.add_argument('--timeout', type=int, default=60, help='Time is seconds before gunicorn abort a request')
     ap.add_argument('-V', '--version', action='version', version='%(prog)s ' + __version__)
 
     ap.add_argument('--storage', default=False, action="store_true", dest="storage", help="also start Storage Emulator")
@@ -320,15 +331,24 @@ def main():
 
     ap.add_argument('--cron', default=False, action='store_true', dest="cron", help='also start Cron Emulator')
 
+    ap.add_argument(
+        '--env_var', metavar="KEY=VALUE", nargs="*",
+        help="Set environment variable for the runtime. Each env_var is in "
+             "the format of KEY=VALUE, and you can define multiple "
+             "environment variables. You can also define them in app.yaml."
+    )
+
     args = ap.parse_args()
-    envVars(args.app_id, args)
-    patch_gunicorn()
-    myFolder = os.getcwd()
+
     appFolder = os.path.abspath(args.config_paths[0])
 
     # load & parse the app.yaml
     with open(os.path.join(appFolder, "app.yaml"), "r") as f:
         appYaml = yaml.load(f, Loader=yaml.Loader)
+
+    envVars(args.app_id, args, appYaml)
+    patch_gunicorn()
+    myFolder = os.getcwd()
 
     # Check for correct runtime
     myRuntime = f"python{sys.version_info.major}{sys.version_info.minor}"
