@@ -1,6 +1,9 @@
 # Changelog
 
 This file documents any relevant changes.
+## [0.9.8] - 2023-11.22
+- feat: added support for custom environment variables
+
 ## [0.9.7] - 2023-10.27
 - fix: readded subdomain support
 - feat: added editorconf
