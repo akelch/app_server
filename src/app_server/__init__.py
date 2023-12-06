@@ -296,6 +296,8 @@ def start_gunicorn(args, appYaml, appFolder, myFolder):
     if "--reuse-port" not in entrypoint:
         entrypoint.insert(1, "--reuse-port")
 
+    entrypoint.extend(["--timeout", str(args.timeout)])
+
     os.chdir(appFolder)
     subprocesses.append(subprocess.Popen(entrypoint))
     os.chdir(myFolder)
