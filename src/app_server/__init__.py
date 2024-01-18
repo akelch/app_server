@@ -13,7 +13,7 @@ from werkzeug.urls import uri_to_iri, url_unquote
 
 
 
-__version__ = "0.9.8"
+__version__ = "0.9.9"
 
 subprocesses = []
 
